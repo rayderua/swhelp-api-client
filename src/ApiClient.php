@@ -913,7 +913,7 @@ class ApiClient
         // Dynamic config
         $this->force_api    = ( isset($config['force_api'])?    $config['force_api']    : $this->default_config['force_api'] );
         $this->force_cache  = ( isset($config['force_cache'])?  $config['force_cache']  : $this->default_config['force_cache'] );
-        $this->project_api  = ( isset($config['project_api'])?  true                    : $this->default_config['project_api'] );
+        $this->project_api  = ( isset($config['project_api'])?  $config['project_api']  : $this->default_config['project_api'] );
 
         // API has high priority
         if ( $this->force_api ) {
