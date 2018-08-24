@@ -29,6 +29,7 @@ $api = new ApiClient($apiConfig);
 |---|---|---|
 | datadir           | sys_tmp_dir/swgoh-api | The directory in which will be stored credential and cache data|
 | cache_enable      | False                 | Enable caching. All the data requested from the api will be stored in the local cache (required: datadir)|
+| cache_rm_expired  | False                 | Remove cache if expired
 | cache_player_time | 3600                  | Cache lifetime (in seconds) for swgoh/player data (cannot be less then default)|
 | cache_guild_time  | 3600*4                | Cache lifetime (in seconds) for swgoh/guild data (Cannot be less then default)|
 | cache_data_time   | 3600*24               | Cache lifetime (in seconds) for swgoh/guild data (Cannot be less then default)|
@@ -51,11 +52,22 @@ $project['name'] = 1;
 $project['allyCode'] = 1;
 $project['roster'] = array('defId'=> 1, 'level' => 1, 'gp' => 1, 'gear' => 1, 'rarity' => 1, 'mods' => ["id"=> 1, "slot"=> 1, "setId"=> 1, "set"=> 1, "level"=> 1, "pips"=> 1]);
 
-$accounts = $api->getPlayer($allyCodes);
+$accounts = $api->getPlayer(
+    $allyCodes,     // players
+    $project        // default = null
+);
+```
+
+## Get player units (swgoh/units)
+```php
+$allyCodes = array(123456789,987654321);
+$accounts = $api->getPlayerUnits(
+    $allyCodes,     // players
+    $mods = false   // default true
+);
 ```
 
 ## Get guild data (swgoh/guild)
-
 ```php
 $allyCodes = array(
     /* allycode => GuildName */
@@ -75,7 +87,11 @@ $project = array(;
     )
 );
 
-$guilds = $api->getGuild($guild_allys, $project, $fetchPlayers = true);
+$guilds = $api->getGuild(
+    $guild_allys,           // players
+    $project,               // default = null
+    $fetchPlayers = true    // also fetch players (if cache enabled)/ Default false
+);
 ```
 
 ## Get guild data (swgoh/guild)

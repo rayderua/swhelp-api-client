@@ -1,16 +1,13 @@
 <?php
-  
+
 namespace Swgoh;
 
 use GuzzleHttp\Client;
-
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\StreamHandler;
-
-
 use Exception;
 
 
@@ -27,6 +24,7 @@ class ApiClient
     private $api_url_player   = '/swgoh/player';
     private $api_url_guild    = '/swgoh/guild';
     private $api_url_data     = '/swgoh/data';
+    private $api_url_units    = '/swgoh/units';
     private $api_relogin      = 0;
 
     // Deafults
@@ -43,6 +41,7 @@ class ApiClient
         'log_file'          => null,
         // Fetch/Store settings
         'cache_enable'      => false,
+        'cache_rm_expired'  => false,
         'cache_player_time' => 3600 * 1,
         'cache_guild_time'  => 3600 * 4,
         'cache_data_time'   => 3600 * 24,
@@ -68,7 +67,7 @@ class ApiClient
         'tableList', 'targetingSetList', 'territoryBattleDefinitionList', 'territoryWarDefinitionList',
         'unitsList', 'unlockAnnouncementDefinitionList', 'warDefinitionList', 'xpTableList'
     );
-
+    private $supported_types = array('guilds', 'players', 'data', 'units');
     //
     private $is_configured    = false;
     private $datadir;
@@ -79,6 +78,7 @@ class ApiClient
     private $log_file;
     private $lang;
     private $cache_enable;
+    private $cache_rm_expired;
     private $cache_player_time;
     private $cache_guild_time;
     private $cache_data_time;
@@ -90,6 +90,7 @@ class ApiClient
     /**
      * ApiClient constructor.
      * @param null $config
+     * @throws Exception
      */
     public function __construct($config = null )
     {
@@ -309,7 +310,7 @@ class ApiClient
     private function fetchCache($type, $file, $project = null) {
 
         // check cache type
-        if ( !in_array($type, ['guilds', 'players', 'data']) ) {
+        if ( !in_array($type, $this->supported_types) ) {
             $this->logger('WARNING',sprintf("fetchCache: invalid type - %s", $type));
             return null;
         }
@@ -341,6 +342,9 @@ class ApiClient
             case 'data':
                 $cache_time = $this->cache_data_time;
                 break;
+            case 'units':
+                $cache_time = $this->cache_player_time;
+                break;
             default:
                 $this->logger('WARNING',sprintf('fetchCache: unknown cache type'));
                 return null;
@@ -365,6 +369,9 @@ class ApiClient
         if (isset($cache->updated) && (time() - intval($cache->updated / 1000) > $cache_time)) {
             if (!$this->force_cache) {
                 $this->logger('WARNING', sprintf("fetchCache: [%s/%s] Cache expired", $type, $file));
+                if ($this->cache_rm_expired) {
+                    $this->removeCache($type, $file);
+                }
                 return null;
             } else {
                 $this->logger('WARNING', sprintf("fetchCache: [%s/%s] Return expired cache", $type, $file));
@@ -375,29 +382,51 @@ class ApiClient
         $data = $cache->data;
         $this->logger('DEBUG',sprintf("fetchCache: [%s/%s] Project - %s",$type, $file, json_encode($project)));
 
+
         if ( $project != null ) {
+            $pdata = null;
             $this->logger('DEBUG',sprintf('fetchCache: Get project data '));
+
 
             if ( in_array($type,['players','guilds']) ) {
                 $pdata = $this->fetchCacheProject($data, $project);
             } else {
-                $pdata = array();
-                foreach ( $data as $adata ) {
-                    $pobj = $this->fetchCacheProject($adata, $project);
-                    array_push($pdata, $pobj);
+                if ($type == 'data') {
+                    $pdata = array();
+                    foreach ($data as $adata) {
+                        $pobj = $this->fetchCacheProject($adata, $project);
+                        array_push($pdata, $pobj);
+                    }
+                }
+                if ($type == 'units') {
+                    $pdata = array();
+
+                    foreach ($data as $unit => $players) {
+                        foreach ($players as $player ) {
+
+                            if (!isset($pdata[$unit])) { $pdata[$unit] = array(); }
+                            array_push($pdata[$unit], $this->fetchCacheProject($player, $project));
+
+                        }
+                    }
                 }
             }
-
             $data = $pdata;
         }
+
 
         return $data;
 
     }
 
+    /**
+     * @param $data
+     * @param $project
+     * @return object
+     */
     private function fetchCacheProject($data, $project) {
         $result = (object)[];
-
+        // $unitid = uniqid();
         foreach ($project as $key => $val) {
             // $this->logger('DEBUG',sprintf("PROJECT:%s: Key[%s] Search ", $unitid, $key));
             if (isset($data->{$key})) {
@@ -424,6 +453,7 @@ class ApiClient
                     }
                 }
             } else {
+                // $this->logger('DEBUG',sprintf("PROJECT:%s: Key[%s] not exist in %s", $unitid, json_encode($key), json_encode($data)));
                 $result->{$key} = null;
             }
         }
@@ -431,10 +461,12 @@ class ApiClient
         return $result;
     }
 
+
     /**
      * @param $type
      * @param $name
      * @param $data
+     * @param null $project
      * @return bool
      */
     private function storeCache($type, $name, $data, $project = null){
@@ -444,7 +476,7 @@ class ApiClient
             return false;
         }
 
-        if (!in_array($type, ['guilds', 'players', 'data'])) {
+        if (!in_array($type, $this->supported_types)) {
             $this->logger('WARNING',sprintf("storeCache: invalid type [%s]", $type));
             return false;
         }
@@ -470,6 +502,30 @@ class ApiClient
             $this->logger('DEBUG', sprintf("storeCache: %s/%s Could not write cache", $type, $name));
             return false;
         }
+    }
+
+    private function removeCache($type, $name){
+
+        if ( !$this->cache_enable ) {
+            $this->logger('WARNING',sprintf('removeCache: cache = disabled'));
+            return false;
+        }
+
+        if (!in_array($type, $this->supported_types)) {
+            $this->logger('WARNING',sprintf("removeCache: invalid type [%s]", $type));
+            return false;
+        }
+
+        // Store path
+        $path = $this->datadir . '/cache/'. $type .'/'. $name .'.json';
+
+        if ( !file_exists($path)) {
+            $this->logger('DEBUG', sprintf("removeCache: cahce not exists [%s/%s]", $type, $name));
+        } else {
+            unlink($path);
+            $this->logger('DEBUG', sprintf("removeCache: Removed [%s/%s]", $type, $name));
+        }
+        return true;
     }
 
     /**
@@ -588,7 +644,7 @@ class ApiClient
                         $guild->cache = false;
                     }
 
-                    if ($fetchPlayers == true) {
+                    if ($fetchPlayers == true && $this->cache_enable) {
                         $this->logger('INFO',sprintf("fetchGuild: Fetch players for guild %s/%s/%s",$ally,$name, md5($guild->name)));
                         $ids = array();
                         foreach ($guild->roster as $player) {
@@ -660,7 +716,80 @@ class ApiClient
     }
 
     /**
+     * @param $allys
+     * @param $mods
+     * @return array|mixed|null
+     * @throws GuzzleException
+     */
+    private function fetchPlayerUnits($allys, $mods)
+    {
+        $data       = array();  // return data
+        $fetch_list = array();  // fetched from api
+        $cache_list = array();  // fetched from cache
+
+        foreach ($allys as $ally) {
+            // Get player cache
+            $player = $this->fetchCache('units', $ally);
+            if ( $player == null )  {
+                // Cache - not found
+                array_push($fetch_list, $ally);
+            } else {
+                // Cache - ok
+                $data[$ally] = $player;
+                array_push($cache_list, $ally);
+            }
+        }
+
+        $this->logger('DEBUG', sprintf('Fetch Units: From Cache:' . json_encode($cache_list)));
+        $this->logger('DEBUG', sprintf('Fetch Units: From API:' . json_encode($fetch_list)));
+
+        if (count($fetch_list) > 0) {
+
+            // Create payload
+            $payload = (object)[];
+            $payload->allycode = $fetch_list;
+            $payload->mods = $mods;
+            // $payload->project = $project; // Not supported by API
+
+            // Send query
+            $res = $this->fetchApi($this->api_url_units, $payload);
+            file_put_contents('res.json',json_encode($res,JSON_PRETTY_PRINT));
+            // Convert single to array
+            //$units = (is_array($res) ? $res : array($res));
+
+            // Process Cache/Data
+            $player_data = array();
+
+
+            if ($this->cache_enable) {
+                foreach ($res as $unit => $players) {
+                    foreach ($players as $player) {
+                        $arr = array(); array_push($arr,$player);
+                        $player_data[$player->allyCode][$unit] = $arr;
+                    }
+                }
+
+                foreach ($player_data as $ally => $units) {
+                    $this->storeCache('units', $ally, $units);
+                    $data[$ally] = $units;
+                }
+            }
+        }
+
+
+        if ( count($data) == 0 ) {
+            return null;
+        } elseif ( count($data) == 1 ) {
+            return reset($data);
+        } else {
+            return $data;
+        }
+
+    }
+
+    /**
      * @param null $config
+     * @throws Exception
      */
     public function setConfig($config = null)
     {
@@ -689,7 +818,8 @@ class ApiClient
             $this->log_level    = ( isset($config['log_level'])?    $config['log_level']    : $this->default_config['log_level'] );
             $this->log_verbose  = ( isset($config['log_verbose'])?  $config['log_verbose']  : $this->default_config['log_verbose'] );
             $this->lang         = ( isset($config['lang'])?         $config['lang']         : $this->default_config['lang'] );
-            $this->cache_enable = ( isset($config['cache_enable'])? $config['cache_enable'] : $this->default_config['cache_enable'] );
+            $this->cache_enable = ( isset($config['cache_enable'])? true                    : $this->default_config['cache_enable'] );
+            $this->cache_rm_expired = ( isset($config['cache_rm_expired'])? true                    : $this->default_config['cache_rm_expired'] );
 
             $this->cache_player_time    = ( isset($config['cache_player_time'])? $config['cache_player_time'] : $this->default_config['cache_player_time'] );
             $this->cache_guild_time     = ( isset($config['cache_guild_time'])?  $config['cache_guild_time']  : $this->default_config['cache_guild_time'] );
@@ -761,7 +891,8 @@ class ApiClient
                     '/cache',
                     '/cache/guilds',
                     '/cache/players',
-                    '/cache/data'
+                    '/cache/data',
+                    '/cache/units   q'
                 );
 
                 foreach ($dirs as $dir) {
@@ -911,6 +1042,42 @@ class ApiClient
             $data = $this->fetchData($list, $plist);
             return $data;
         }
+    }
+
+
+    /**
+     * @param $ally
+     * @param bool $mods
+     * @return array|mixed|null
+     * @throws GuzzleException
+     */
+    public function getPlayerUnits($ally, $mods = true){
+
+        $allys = array();
+        if (is_array($ally)) {
+            $allys = array_map('intval', $ally);
+        } else {
+            array_push($allys, intval($ally));
+        }
+        $allys = array_diff($allys,[0]);
+
+        $data = $this->fetchPlayerUnits($allys, $mods);
+
+        // Convert TO API format
+        if ( count($allys) > 1 ) {
+            $result = array();
+            foreach ($data as $ally => $pdata ) {
+               foreach ($pdata as $unit => $udata) {
+                   if (!isset($result[$unit])) {
+                       $result[$unit] = array();
+                   }
+                   array_push($result[$unit], $udata[0]);
+               }
+           }
+        } else {
+            $result = $data;
+        }
+        return $result;
     }
 
 }

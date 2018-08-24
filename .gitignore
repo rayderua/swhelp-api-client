@@ -1,0 +1,9 @@
+/storage
+/vendor
+/tmp
+/check.php
+/.idea
+/.vscode
+/.vagrant
+.env
+composer.lock
