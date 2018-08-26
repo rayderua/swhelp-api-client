@@ -315,7 +315,10 @@ class ApiClient
             return null;
         }
         // check cache file
-        $path = $this->datadir . '/cache/'. $type .'/'. $file .'.json';
+        $path = $this->datadir . '/cache/' . $this->lang . '/' . $type . '/' . $file . '.json';
+
+        // $this->logger('WARNING',sprintf("fetchCache: Check path: %s", $path));
+
         if (!file_exists($path)) {
             $this->logger('WARNING',sprintf("fetchCache: %s/%s - not cached",$type, $file));
             return null;
@@ -358,11 +361,6 @@ class ApiClient
 
         if ($cache == null) {
             $this->logger('WARNING',sprintf("fetchCache: [%s/%s] Cannot read cache data",$type, $file));
-            return null;
-        }
-
-        if (!isset($cache->lang) || $cache->lang != $this->lang) {
-            $this->logger('WARNING',sprintf("fetchCache: [%s/%s] Language changed",$type, $file));
             return null;
         }
 
@@ -482,7 +480,7 @@ class ApiClient
         }
 
         // Store path
-        $path = $this->datadir . '/cache/'. $type .'/'. $name .'.json';
+        $path = $this->datadir .'/cache/'. $this->lang .'/'. $type .'/'. $name .'.json';
 
         // Prepare store data
         $store = $payload = (object)[];
@@ -517,7 +515,8 @@ class ApiClient
         }
 
         // Store path
-        $path = $this->datadir . '/cache/'. $type .'/'. $name .'.json';
+        $path = $this->datadir .'/cache/'. $this->lang .'/'. $type .'/'. $name .'.json';
+
 
         if ( !file_exists($path)) {
             $this->logger('DEBUG', sprintf("removeCache: cahce not exists [%s/%s]", $type, $name));
@@ -793,6 +792,32 @@ class ApiClient
      */
     public function setConfig($config = null)
     {
+        // Language setup
+        $this->lang         = ( isset($config['lang'])?         $config['lang']         : $this->default_config['lang'] );
+
+        if ( !in_array($this->lang,$this->langs)) {
+            $this->lang = $this->default_config['lang'];
+        }
+
+        // Dynamic config
+        $this->force_api    = ( isset($config['force_api'])?    $config['force_api']    : $this->default_config['force_api'] );
+        $this->force_cache  = ( isset($config['force_cache'])?  $config['force_cache']  : $this->default_config['force_cache'] );
+        $this->project_api  = ( isset($config['project_api'])?  $config['project_api']  : $this->default_config['project_api'] );
+
+        // API has high priority
+        if ( $this->force_api ) {
+            $this->force_cache = false;
+        }
+
+        if ( $this->force_cache && !$this->cache_enable ) {
+            $this->force_cache = false;
+        }
+
+
+        $this->logger('DEBUG', sprintf("Set force_cache = %s",($this->force_cache?1:0)));
+        $this->logger('DEBUG', sprintf("Set force_api   = %s",($this->force_api?1:0)));
+        $this->logger('DEBUG', sprintf("Set project_api = %s",($this->project_api?1:0)));
+
 
         if ( $this->is_configured != true ) {
             if ($config == null || !is_array($config)) {
@@ -817,7 +842,7 @@ class ApiClient
             $this->log_file     = ( isset($config['log_file'])?     $config['log_file']     : $this->default_config['log_file'] );
             $this->log_level    = ( isset($config['log_level'])?    $config['log_level']    : $this->default_config['log_level'] );
             $this->log_verbose  = ( isset($config['log_verbose'])?  $config['log_verbose']  : $this->default_config['log_verbose'] );
-            $this->lang         = ( isset($config['lang'])?         $config['lang']         : $this->default_config['lang'] );
+
             $this->cache_enable = ( isset($config['cache_enable'])? true                    : $this->default_config['cache_enable'] );
             $this->cache_rm_expired = ( isset($config['cache_rm_expired'])? true                    : $this->default_config['cache_rm_expired'] );
 
@@ -880,25 +905,26 @@ class ApiClient
                 }
             }
 
-            // Language setup
-            if ( !in_array($this->lang,$this->langs)) {
-                $this->lang = $this->default_config['lang'];
-            }
-
             // Cache setup
             if ($this->cache_enable) {
+                if (!file_exists($this->datadir . '/cache' )) {
+                    if (!mkdir($this->datadir . '/cache', 0755, true)) {
+                        throw new Exception('Could not create logdir: ' . '/cache');
+                    }
+                }
+
                 $dirs = array(
-                    '/cache',
-                    '/cache/guilds',
-                    '/cache/players',
-                    '/cache/data',
-                    '/cache/units'
+                    'guilds',
+                    'players',
+                    'data',
+                    'units'
                 );
 
                 foreach ($dirs as $dir) {
-                    if (!file_exists($this->datadir . '/' . $dir)) {
-                        if (!mkdir($this->datadir . '/' . $dir, 0755, true)) {
-                            throw new Exception('Could not create logdir: ' . $dir . '/logs');
+                    $mkdir = $this->datadir .'/cache/'. $this->lang .'/'. $dir;
+                    if (!file_exists($mkdir)) {
+                        if (!mkdir($mkdir, 0755, true)) {
+                            throw new Exception('Could not create dir: ' . $mkdir);
                         }
                     }
                 }
@@ -909,26 +935,6 @@ class ApiClient
 
             $this->logger('DEBUG', sprintf('Api config: %s', json_encode($this->getConfig())));
         }
-
-        // Dynamic config
-        $this->force_api    = ( isset($config['force_api'])?    $config['force_api']    : $this->default_config['force_api'] );
-        $this->force_cache  = ( isset($config['force_cache'])?  $config['force_cache']  : $this->default_config['force_cache'] );
-        $this->project_api  = ( isset($config['project_api'])?  $config['project_api']  : $this->default_config['project_api'] );
-
-        // API has high priority
-        if ( $this->force_api ) {
-            $this->force_cache = false;
-        }
-
-        if ( $this->force_cache && !$this->cache_enable ) {
-            $this->force_cache = false;
-        }
-
-
-        $this->logger('DEBUG', sprintf("Set force_cache = %s",($this->force_cache?1:0)));
-        $this->logger('DEBUG', sprintf("Set force_api   = %s",($this->force_api?1:0)));
-        $this->logger('DEBUG', sprintf("Set project_api = %s",($this->project_api?1:0)));
-
 
     }
 
