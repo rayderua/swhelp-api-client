@@ -892,7 +892,7 @@ class ApiClient
                     '/cache/guilds',
                     '/cache/players',
                     '/cache/data',
-                    '/cache/units   q'
+                    '/cache/units'
                 );
 
                 foreach ($dirs as $dir) {
