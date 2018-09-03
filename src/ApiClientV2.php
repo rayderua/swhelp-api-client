@@ -11,7 +11,7 @@ use Monolog\Handler\StreamHandler;
 use Exception;
 
 
-class ApiClient
+class ApiClientV2
 {
     // Api
     private $api_username;
@@ -272,7 +272,7 @@ class ApiClient
             $payload->project = null;
         }
 
-        $this->logger('DEBUG',sprintf("FetchApi: Send request: %s. payload: %s",$url, json_encode($payload)));
+        $this->logger('DEBUG',sprintf("[FetchApi] Send request: %s. payload: %s",$url, json_encode($payload)));
 
 
         $res = $this->api_client->request('POST', $url, [
@@ -289,13 +289,13 @@ class ApiClient
         if ($code == 200) {
             $json = json_decode($body);
             if ($json == null) {
-                $this->logger('ERROR',sprintf('FetchApi: Could not parse response body'));
+                $this->logger('ERROR',sprintf('[FetchApi] Could not parse response body'));
             } else {
-                $this->logger('DEBUG',sprintf('FetchApi: Response - OK'));
+                $this->logger('DEBUG',sprintf('[FetchApi] Response - OK'));
                 $data = $json;
             }
         } else {
-            $this->logger('CRITICAL',sprintf('FetchApi: Could not fetch from API. code = %s, answer = %s',$code,$body));
+            $this->logger('CRITICAL',sprintf('[FetchApi] Could not fetch from API. code = %s, answer = %s',$code,$body));
         }
 
         return $data;
@@ -311,7 +311,7 @@ class ApiClient
 
         // check cache type
         if ( !in_array($type, $this->supported_types) ) {
-            $this->logger('WARNING',sprintf("fetchCache: invalid type - %s", $type));
+            $this->logger('WARNING',sprintf("[FetchCache] invalid type - %s", $type));
             return null;
         }
         // check cache file
@@ -320,12 +320,12 @@ class ApiClient
         // $this->logger('WARNING',sprintf("fetchCache: Check path: %s", $path));
 
         if (!file_exists($path)) {
-            $this->logger('WARNING',sprintf("fetchCache: %s/%s - not cached",$type, $file));
+            $this->logger('WARNING',sprintf("[FetchCache] %s/%s - not cached",$type, $file));
             return null;
         }
         // check fetch from api forced
         if ( $this->force_api ) {
-            $this->logger('WARNING',sprintf('fetchCache: force_api - enabled'));
+            $this->logger('WARNING',sprintf('[FetchCache] force_api - enabled'));
             return null;
         }
         // check if cache enabled
@@ -539,10 +539,9 @@ class ApiClient
         $fetch_list = array();  // fetched from api
         $cache_list = array();  // fetched from cache
 
-
         foreach ($allys as $ally) {
             // Get player cache
-            $player = $this->fetchCache('players', $ally, $project);
+                $player = $this->fetchCache('players', $ally, $project);
             if ( $player == null )  {
                 // Cache - not found
                 array_push($fetch_list, $ally);
@@ -989,7 +988,7 @@ class ApiClient
      * @throws GuzzleException
      */
     public function getGuild($guilds, $project = null, $fetchPlayers = false){
-
+        var_dump($guilds);
         $list = array();
         if ( is_array($guilds) ) {
             foreach ($guilds as $ally => $name ) {
