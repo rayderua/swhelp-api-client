@@ -960,21 +960,36 @@ class ApiClientV2
         return $config;
     }
 
+    private function validateAllycode($ally = null) {
+        if ( is_numeric($ally) && is_integer($ally) && ($ally/100000000) > 1 && ($ally/100000000) < 10) {
+            return intval($ally);
+        } else {
+            return false;
+        }
+    }
+
     /**
      * @param $ally
      * @param null $project
      * @return array|mixed|null
      * @throws GuzzleException
      */
-    public function getPlayer($ally, $project = null){
+    public function getPlayer($allys, $project = null){
 
-        $allys = array();
-        if (is_array($ally)) {
-            $allys = array_map('intval', $ally);
-        } else {
-            array_push($allys, intval($ally));
+        $ally_list = array();
+        if ( !is_array($ally) ) {
+            $ally = array($ally);
         }
-        $allys = array_diff($allys,[0]);
+
+        foreach ($ally as $code) {
+            if ($this->validateAllycode($code)) {
+                array_push($ally_list, $code);
+            }
+        }
+
+        $ally_list = array_unique(sort($ally_list));
+
+        return $ally_list;
 
         $data = $this->fetchPlayer($allys, $project);
         return $data;
@@ -1084,6 +1099,7 @@ class ApiClientV2
         }
         return $result;
     }
+
 
 }
 

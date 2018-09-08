@@ -17,12 +17,12 @@ class ApiClientV3
     /**
      * API Variables
      */
-    const API_URL_BASE      = 'https://api.swgoh.help';
-    const API_URL_AUTH      = '/auth/signin';
-    const API_URL_PLAYER    = '/swgoh/player';
-    const API_URL_GUILD     = '/swgoh/guild';
-    const API_URL_DATA      = '/swgoh/data';
-    const API_URL_UNITS     = '/swgoh/units';
+    const API_URL_BASE = 'https://api.swgoh.help';
+    const API_URL_AUTH = '/auth/signin';
+    const API_URL_PLAYER = '/swgoh/player';
+    const API_URL_GUILD = '/swgoh/guild';
+    const API_URL_DATA = '/swgoh/data';
+    const API_URL_UNITS = '/swgoh/units';
 
     const API_ALLOWED_LANGS = array(
         'chs_cn',
@@ -96,121 +96,121 @@ class ApiClientV3
 
     const DEFAULT_DATADIR_NAME = 'api.swgoh.help';
 
-    const DEFAULT_CONFIG    = array(
-        'datadir'               => null,        // Data: directory
-        'username'              => null,        // API Username
-        'password'              => null,        // API Passsword
-        'lang'                  => 'eng_us',    // API payload language
-        'log_enable'            => false,       // Logging: enable
-        'log_level'             => 'ERROR',     // Logging: level
-        'log_verbose'           => false,       // Logging: verbose
-        'log_file'              => null,        // Loggign: file
-        'cache_enable'          => false,       // Cache: enable
-        'cache_expire_remove'   => false,       // Cache: remove expired cache
-        'cache_expire_player'   => 3600 * 4,    // Cache: expire time for player
-        'cache_expire_guild'    => 3600 * 4,    // Cache: expire time for guild
-        'cache_expire_data'     => 3600 * 24,   // Cache: expire time for data
-        'force_api'             => false,       // Fetch: Force from API
-        'force_cache'           => false,       // Fetch: Force from Cache
-        'disable_projects'      => false,       // Fetch: Do not send project to API
+    const DEFAULT_CONFIG = array(
+        'datadir' => null,        // Data: directory
+        'username' => null,        // API Username
+        'password' => null,        // API Passsword
+        'lang' => 'eng_us',    // API payload language
+        'log_enable' => false,       // Logging: enable
+        'log_level' => 'ERROR',     // Logging: level
+        'log_verbose' => false,       // Logging: verbose
+        'log_file' => null,        // Loggign: file
+        'cache_enable' => false,       // Cache: enable
+        'cache_expire_remove' => false,       // Cache: remove expired cache
+        'cache_expire_player' => 3600 * 4,    // Cache: expire time for player
+        'cache_expire_guild' => 3600 * 4,    // Cache: expire time for guild
+        'cache_expire_data' => 3600 * 24,   // Cache: expire time for data
+        'force_api' => false,       // Fetch: Force from API
+        'force_cache' => false,       // Fetch: Force from Cache
+        'disable_projects' => false,       // Fetch: Do not send project to API
     );
 
     private $config;
     private $api_client;
     private $api_credentials;
     private $api_token;
-    private $api_relogin        = 0;
+    private $api_relogin = 0;
     private $log;
 
-    public  function __construct( $config = self::DEFAULT_CONFIG )
+    public function __construct($config = self::DEFAULT_CONFIG)
     {
 
         $this->config = self::DEFAULT_CONFIG;
-        $this->log  = new Logger('logger');
+        $this->log = new Logger('logger');
 
         try {
             $this->setConfig($config);
 
             $this->api_client = new Client([
-                'base_uri'      => self::API_URL_BASE,
-                'timeout'       => 600,
-                'http_errors'   => false,
-                'debug'         => false,
+                'base_uri' => self::API_URL_BASE,
+                'timeout' => 600,
+                'http_errors' => false,
+                'debug' => false,
             ]);
         } catch (Exception $e) {
             throw $e;
         }
     }
 
-    private function setConfig( $config )
+    private function setConfig($config)
     {
 
-        if (!isset($config['username']) || strlen($config['username']) == 0 ) {
+        if (!isset($config['username']) || strlen($config['username']) == 0) {
             throw new Exception('[SetConfig] Username required');
         }
 
-        if (!isset($config['password']) || strlen($config['password']) == 0 ) {
+        if (!isset($config['password']) || strlen($config['password']) == 0) {
             throw new Exception('[SetConfig] Password required');
         }
 
-            $this->config['api_username'] = $config['username'];
+        $this->config['api_username'] = $config['username'];
         $this->config['api_password'] = $config['password'];
 
 
         // preSetup: Cache
-        if ( isset($config['cache_enable']) && $config['cache_enable'] != false ) {
+        if (isset($config['cache_enable']) && $config['cache_enable'] != false) {
             $this->config['cache_enable'] = true;
         } else {
             $this->config['cache_enable'] = self::DEFAULT_CONFIG['cache_enable'];
         }
 
         // preSetup: Logging
-        if ( isset($config['log_enable']) && $config['log_enable'] != false ) {
+        if (isset($config['log_enable']) && $config['log_enable'] != false) {
             $this->config['log_enable'] = true;
         } else {
             $this->config['log_enable'] = self::DEFAULT_CONFIG['log_enable'];
         }
 
         // Setup: datadir
-        $this->config['datadir'] = sys_get_temp_dir() .'/'. self::DEFAULT_DATADIR_NAME;
-        if ( isset($config['datadir']) && $config['datadir'] != null ) {
+        $this->config['datadir'] = sys_get_temp_dir() . '/' . self::DEFAULT_DATADIR_NAME;
+        if (isset($config['datadir']) && $config['datadir'] != null) {
 
-            if ( file_exists($config['datadir']) == false && ( mkdir($config['datadir'], 0755, true)) == false ) {
+            if (file_exists($config['datadir']) == false && (mkdir($config['datadir'], 0755, true)) == false) {
                 $this->config['log_enable'] = false;
                 $this->config['cache_enable'] = false;
 
                 throw new Exception('[SetConfig] Could not create datadir: ' . $this->config['datadir']);
             }
-            $this->config['datadir'] = $config['datadir'] .'/'. self::DEFAULT_DATADIR_NAME;
+            $this->config['datadir'] = $config['datadir'] . '/' . self::DEFAULT_DATADIR_NAME;
         }
         $this->api_credentials = $this->config['datadir'] . '/credentials.json';
 
         // Setup: Logging
-        if ( $this->config['log_enable'] == true ) {
+        if ($this->config['log_enable'] == true) {
 
             // Set log_file
-            if ( isset($config['log_file']) ) {
-                $ldir   = dirname($this->config['log_file']);
-                $lfile  = basename($config['log_file']);
-                } else {
-                $ldir    = $this->config['datadir'] . '/logs';
-                $lfile   = 'api.log';
+            if (isset($config['log_file'])) {
+                $ldir = dirname($this->config['log_file']);
+                $lfile = basename($config['log_file']);
+            } else {
+                $ldir = $this->config['datadir'] . '/logs';
+                $lfile = 'api.log';
             }
 
-            if ( !file_exists($ldir) && (!mkdir($ldir, 0755, true)) ) {
-                throw new Exception('[SetConfig] Could not create dir: '. $ldir );
+            if (!file_exists($ldir) && (!mkdir($ldir, 0755, true))) {
+                throw new Exception('[SetConfig] Could not create dir: ' . $ldir);
             }
-            $this->config['log_file'] = $ldir .'/'. $lfile;
+            $this->config['log_file'] = $ldir . '/' . $lfile;
 
             // Set log_level
-            if (isset($config['log_level']) && in_array($config['log_level'],self::ALLOWED_LOG_LEVELS)) {
+            if (isset($config['log_level']) && in_array($config['log_level'], self::ALLOWED_LOG_LEVELS)) {
                 $this->config['log_level'] = $config['log_level'];
             } else {
                 $this->config['log_level'] = self::DEFAULT_CONFIG['log_level'];
             }
 
             // Set log_verbose
-            if ( isset($config['log_verbose']) && $config['log_verbose'] != false ) {
+            if (isset($config['log_verbose']) && $config['log_verbose'] != false) {
                 $this->config['log_verbose'] = true;
             } else {
                 $this->config['log_verbose'] = self::DEFAULT_CONFIG['log_verbose'];
@@ -218,13 +218,13 @@ class ApiClientV3
 
             // Creeate logger
             // $this->log  = new Logger('logger');
-            $formatter  = new LineFormatter(null, null, false, true);
-            $handler    = new RotatingFileHandler($this->config['log_file'], 32, $this->config['log_level']);
+            $formatter = new LineFormatter(null, null, false, true);
+            $handler = new RotatingFileHandler($this->config['log_file'], 32, $this->config['log_level']);
             $handler->setFormatter($formatter);
 
             $this->log->pushHandler($handler);
 
-            if ( $this->config['log_verbose'] ) {
+            if ($this->config['log_verbose']) {
                 $handler = new StreamHandler('php://stdout', $this->config['log_level']);
                 $handler->setFormatter($formatter);
                 $this->log->pushHandler($handler);
@@ -233,7 +233,7 @@ class ApiClientV3
         }
 
         // Setup: Cache
-        if ( $this->config['cache_enable'] ) {
+        if ($this->config['cache_enable']) {
 
             if (isset($config['cache_expire_remove']) && $config['cache_expire_remove'] != false) {
                 $this->config['cache_expire_remove'] = true;
@@ -270,7 +270,7 @@ class ApiClientV3
 
     }
 
-    public  function UpdateConfig( $config )
+    public function UpdateConfig($config)
     {
 
         // Setup: API language
@@ -307,7 +307,7 @@ class ApiClientV3
 
     }
 
-    public  function getConfig()
+    public function getConfig()
     {
         $config = $this->config;
         $config['username'] = '********';
@@ -318,10 +318,10 @@ class ApiClientV3
      * @param $level
      * @param $log
      */
-    private function logger($level, $log )
+    private function logger($level, $log)
     {
-        if ( $this->config['log_enable'] ) {
-            if (!in_array($level,['DEBUG','INFO','WARNING','ERROR','CRITICAL']) ) {
+        if ($this->config['log_enable']) {
+            if (!in_array($level, ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])) {
                 $level = 'DEBUG';
             }
             $this->log->log($level, $log);
@@ -329,65 +329,84 @@ class ApiClientV3
     }
 
 
-    public function validatePayload($endpoint, $payload){
+    public function validatePayload($endpoint, $payload)
+    {
+
 
         $result = array();
-
         $result['language'] = $this->config['lang'];
 
 
         $result['enums'] = false;
-        if ( isset($payload['enums']) && $payload['enums'] != false ) {
+        if (isset($payload['enums']) && $payload['enums'] != false) {
             $result['enums'] = true;
         }
 
         $result['project'] = null;
-        if ( isset($payload['project']) ) {
+        if (isset($payload['project'])) {
             $result['project'] = $payload['project'];
         }
 
-        if (in_array($endpoint,['guild','units'])) {
-            $result['mods'] = false;
-
-            if (isset($payload['mods']) && $payload['mods'] == true) {
-                $result['mods'] = true;
+        if ( $endpoint == 'units' ) {
+            $result['mods'] = true;
+            if (isset($payload['mods']) && $payload['mods'] == false) {
+                echo "UNITS MODS: false\n";
+                $result['mods'] = false;
             }
         }
 
-        if ( $endpoint == 'guild') {
-            $result['roster'] = true;
-            $result['units'] = true;
 
-            if ( isset($payload['roster']) && $payload['roster'] == false ) {
-                $result['roster'] = false;
+        if ($endpoint == 'guild') {
+            $result['roster'] = false;
+            $result['units'] = false;
+            $result['mods'] = true;
+
+            if ( isset($payload['roster']) && $payload['roster'] == true) {
+                $result['roster'] = true;
             }
 
-            if ( isset($payload['units']) && $payload['units'] == false ) {
-                $result['units'] = false;
+            if ( isset($payload['units']) && $payload['units'] == true) {
+                $result['roster'] = true;
+                $result['units'] = true;
             }
+
+            if (isset($payload['mods']) && $payload['mods'] == false) {
+                echo "GUILD MODS: false\n";
+                $result['mods'] = false;
+            }
+
+            if ( $result['mods'] == true && $result['units'] == false ) {
+                $result['mods'] = false;
+            }
+
+
         }
+
+        $this->logger('WARNING', sprintf('[validatePayload] %s: IN  = %s', $endpoint, json_encode($payload)));
+        $this->logger('WARNING', sprintf('[validatePayload] %s: OUT = %s', $endpoint, json_encode($result)));
 
         return $result;
     }
 
-    private function fetchCache($endpoint, $name, $payload = null) {
+    private function fetchCache($endpoint, $name, $payload = null)
+    {
 
         $this->logger('DEBUG', sprintf("[FetchCache] [%s/%s] Validate", $endpoint, $name));
 
-        if ( $this->config['cache_enable'] == false ) {
-            $this->logger('WARNING',sprintf('[FetchCache] Cache disabled'));
+        if ($this->config['cache_enable'] == false) {
+            $this->logger('WARNING', sprintf('[FetchCache] Cache disabled'));
             return null;
         }
 
-        if ( $this->config['force_api'] == true ) {
-            $this->logger('WARNING',sprintf('[FetchCache] API forced'));
+        if ($this->config['force_api'] == true) {
+            $this->logger('WARNING', sprintf('[FetchCache] API forced'));
             return null;
         }
 
         // Store path
-        $path = $this->config['datadir'] .'/cache/'. $payload['language'] .'/'. $endpoint .'/'. $name .'.json';
+        $path = $this->config['datadir'] . '/cache/' . $payload['language'] . '/' . $endpoint . '/' . $name . '.json';
         if (!file_exists($path)) {
-            $this->logger('WARNING',sprintf("[FetchCache] %s/%s - not cached",$endpoint, $name));
+            $this->logger('WARNING', sprintf("[FetchCache] %s/%s - not cached [%s]", $endpoint, $name, $path));
             return null;
         }
 
@@ -395,7 +414,7 @@ class ApiClientV3
         $contents = file_get_contents($path);
         $cache = json_decode($contents);
         if ($cache == null) {
-            $this->logger('WARNING',sprintf("[FetchCache] [%s/%s] Cannot read cache data",$endpoint, $name));
+            $this->logger('WARNING', sprintf("[FetchCache] [%s/%s] Cannot read cache data", $endpoint, $name));
             return null;
         }
 
@@ -414,7 +433,7 @@ class ApiClientV3
         }
 
 
-        if ( isset($cache->updated) && ( time() - intval($cache->updated / 1000) > $cache_time) ) {
+        if (isset($cache->updated) && (time() - intval($cache->updated / 1000) > $cache_time)) {
 
             if (!$this->config['force_cache']) {
                 $this->logger('WARNING', sprintf("[FetchCache] [%s/%s] Cache expired (%s)", $endpoint, $name, $cache->updated));
@@ -427,36 +446,41 @@ class ApiClientV3
             }
         }
 
-        $cache_data     = $cache->data;
-        $cache_project  = $cache->project;
-        $cache_payload  = $cache->payload;
+        $cache_data = $cache->data;
+        $cache_project = $cache->project;
+        $cache_payload = $cache->payload;
+
         $payload_project = $payload['project'];
         unset($payload['project']);
 
         $this->logger('DEBUG', sprintf("[FetchCache] FETCH: %s", json_encode($payload)));
         $this->logger('DEBUG', sprintf("[FetchCache] CACHE: %s", json_encode($cache_payload)));
 
-        if ( !$this->compareHashes($payload, $cache_payload) ) {
-            $this->logger('WARNING', sprintf("[FetchCache] [%s/%s] Cache payload does not mutch", $endpoint, $name));
-            return null;
-        }
+        if (!$this->config['force_cache']) {
 
-        if ( !$this->compareHashes($payload_project, $cache_project) ) {
-            $this->logger('WARNING', sprintf("[FetchCache] [%s/%s] Cache project does not mutch", $endpoint, $name));
-            return null;
+            if (!$this->compareHashes($payload, $cache_payload)) {
+                $this->logger('WARNING', sprintf("[FetchCache] [%s/%s] Cache payload does not mutch", $endpoint, $name));
+                return null;
+            }
+
+            if (!$this->compareHashes($payload_project, $cache_project)) {
+                $this->logger('WARNING', sprintf("[FetchCache] [%s/%s] Cache project does not mutch", $endpoint, $name));
+                return null;
+            }
         }
 
         return $cache_data;
     }
 
-    public function compareHashes($need_project, $exists_project) {
+    public function compareHashes($need_project, $exists_project)
+    {
         $this->logger('DEBUG', sprintf("[compareHashes] Cache: %s : %s", json_encode($need_project), json_encode($exists_project)));
 
-        $need_project = json_decode(json_encode($need_project),true);
-        $exists_project = json_decode(json_encode($exists_project),true);
+        $need_project = json_decode(json_encode($need_project), true);
+        $exists_project = json_decode(json_encode($exists_project), true);
 
-        if ( $need_project === null ) {
-            if ( $exists_project !== null ) {
+        if ($need_project === null) {
+            if ($exists_project !== null) {
                 // $this->logger('DEBUG', sprintf("[compareHashes] NULL vs NOT NULL"));
                 return false;
             }
@@ -474,7 +498,7 @@ class ApiClientV3
                 } else {
                     // Both is array
                     foreach ($need_project as $n_k => $n_v) {
-                        if (!array_key_exists($n_k,$exists_project  )) {
+                        if (!array_key_exists($n_k, $exists_project)) {
                             // $this->logger('DEBUG', sprintf("[compareHashes] KEY[%s] not in exists",$n_k));
                             return false;
                         } else {
@@ -497,33 +521,36 @@ class ApiClientV3
     }
 
 
-    private function removeCache($path){
+    private function removeCache($path)
+    {
 
-        if ( !$this->config['cache_enable'] ) {
-            $this->logger('WARNING',sprintf('[RemoveCache] Cache disabled'));
+        if (!$this->config['cache_enable']) {
+            $this->logger('WARNING', sprintf('[RemoveCache] Cache disabled'));
         }
 
-        if ( file_exists($path)) {
+        if (file_exists($path)) {
             unlink($path);
             $this->logger('DEBUG', sprintf("[RemoveCache] Removed [%s]", $path));
         }
 
     }
 
-    private function storeCache( $endpoint, $name, $data, $payload = null ) {
+    private function storeCache($endpoint, $name, $data, $payload = null)
+    {
         // $this->storeCache($endpoint = 'player', $player->allyCode, $player, $payload);
 
-        if ( !$this->config['cache_enable'] ) {
-            $this->logger('WARNING',sprintf('[StoreCache] Cache disabled'));
+        if (!$this->config['cache_enable']) {
+            $this->logger('WARNING', sprintf('[StoreCache] Cache disabled'));
             return false;
         }
 
         // Store path
-        $path = $this->config['datadir'] .'/cache/'. $payload['language'] .'/'. $endpoint .'/'. $name .'.json';
+        $path = $this->config['datadir'] . '/cache/' . $payload['language'] . '/' . $endpoint . '/' . $name . '.json';
 
         // Prepare store data
         $store = (object)[];
-        $store->project = $payload['project'];  unset($payload['project']);
+        $store->project = $payload['project'];
+        unset($payload['project']);
         $store->payload = $payload;
 
         if ($endpoint == 'units') {
@@ -535,11 +562,12 @@ class ApiClientV3
         if (isset($data->updated)) {
             $store->updated = $data->updated;
         } else {
-            echo json_encode($data,JSON_PRETTY_PRINT); exit;
-            $store->updated = time()*1000;
+            echo json_encode($data, JSON_PRETTY_PRINT);
+            exit;
+            $store->updated = time() * 1000;
         }
 
-        if ( file_put_contents($path,json_encode($store)) ) {
+        if (file_put_contents($path, json_encode($store))) {
             $this->logger('DEBUG', sprintf("[StoreCache] %s/%s Saved ", $endpoint, $name));
             return true;
         } else {
@@ -549,27 +577,28 @@ class ApiClientV3
 
     }
 
-    private function login(){
+    private function login()
+    {
 
         $this->api_relogin++;
 
-        if ( $this->api_relogin > 3 ) {
+        if ($this->api_relogin > 3) {
             $message = sprintf("[Login] Too many login attempts (%s)", $this->api_relogin);
             $this->logger('CRITICAL', $message);
             throw new Exception($message);
         }
 
-        if ( !isset($this->config['api_username'])|| !isset($this->config['api_password']) ) {
+        if (!isset($this->config['api_username']) || !isset($this->config['api_password'])) {
             $message = sprintf('[Login] Username/Password required');
             $this->logger('CRITICAL', $message);
             throw new Exception($message);
         }
 
         $form = array(
-            'username'      => $this->config['api_username'],
-            'password'      => $this->config['api_password'],
-            'grant_type'    => 'password',
-            'client_id'     => 'abc',
+            'username' => $this->config['api_username'],
+            'password' => $this->config['api_password'],
+            'grant_type' => 'password',
+            'client_id' => 'abc',
             'client_secret' => '123',
         );
         $v_form = $form;
@@ -592,8 +621,8 @@ class ApiClientV3
 
             $this->logger('DEBUG', sprintf("[Login] Something is wrong!"));
 
-            if ( $code >= 400 && $code < 500 ) {
-                $message = sprintf("[Login] Auth error!\nCode: %s\nMessage: %s\n]",$code, $body);
+            if ($code >= 400 && $code < 500) {
+                $message = sprintf("[Login] Auth error!\nCode: %s\nMessage: %s\n]", $code, $body);
                 $this->logger('CRITICAL', $message);
                 throw new Exception($message);
             } else {
@@ -645,7 +674,7 @@ class ApiClientV3
                 $json->expires_at = $stamp + $json->expires_in;
             }
 
-            $this->logger('INFO', sprintf('[Login] Auth - OK'));
+            $this->logger('INFO', sprintf('[Login] Auth - OK [token: %s]',$json->access_token));
             file_put_contents($this->api_credentials, json_encode($json));
             $this->login_check();
         }
@@ -654,7 +683,7 @@ class ApiClientV3
     private function login_check()
     {
 
-        if ( !file_exists($this->api_credentials) ) {
+        if (!file_exists($this->api_credentials)) {
             $this->logger('WARNING', sprintf('[LoginCheck] Credentials not found'));
             $this->login();
         }
@@ -677,12 +706,13 @@ class ApiClientV3
         }
 
         $stamp = time();
-        if ( $stamp >= $data->expires_at || $data->expires_at - $stamp <= 60) {
+        if ($stamp >= $data->expires_at || $data->expires_at - $stamp <= 60) {
             $this->logger('WARN', sprintf('[LoginCheck] Credentials expired at [%s]', date("Y-m-d H:i:s", $data->expires_at)));
             $this->login();
         }
 
         $this->api_relogin = 0;
+        $this->logger('WARN', sprintf('[LoginCheck] Set token: %s',  $data->access_token ));
         $this->api_token = $data->access_token;
 
     }
@@ -692,7 +722,7 @@ class ApiClientV3
         $this->login_check();
 
         $data = null;
-        $this->logger('DEBUG',sprintf("[FetchApi] Send request: %s. payload: %s",$url, json_encode($payload)));
+        $this->logger('DEBUG', sprintf("[FetchApi] Send request: %s. payload: %s", $url, json_encode($payload)));
 
         $res = $this->api_client->request('POST', $url, [
             'headers' => [
@@ -709,30 +739,34 @@ class ApiClientV3
         if ($code == 200) {
             $json = json_decode($body);
             if ($json == null) {
-                $this->logger('ERROR',sprintf('[FetchApi] Could not parse response body'));
+                $this->logger('ERROR', sprintf('[FetchApi] Could not parse response body'));
             } else {
-                $this->logger('DEBUG',sprintf('[FetchApi] Response - OK'));
+                $this->logger('DEBUG', sprintf('[FetchApi] Response - OK'));
                 $data = $json;
             }
         } else {
-            $this->logger('CRITICAL',sprintf('[FetchApi] Could not fetch from API. code = %s, answer = %s',$code,$body));
+            $this->logger('CRITICAL', sprintf('[FetchApi] Could not fetch from API. code = %s, answer = %s', $code, $body));
         }
 
         return $data;
     }
 
-    private function validateAllycode($ally = null) {
-        if ( is_numeric($ally) && is_integer($ally) && ($ally/100000000) > 1 && ($ally/100000000) < 10) {
+    private function validateAllycode($ally = null)
+    {
+        if (is_numeric($ally) && is_integer($ally) && ($ally / 100000000) > 1 && ($ally / 100000000) < 10) {
             return intval($ally);
         } else {
             return false;
         }
     }
 
-    private function getAlycodes($allycodes = null ) {
+    private function getAlycodes($allycodes = null)
+    {
         $result = array();
 
-        if ( !is_array($allycodes) ) { $allycodes = array($allycodes); }
+        if (!is_array($allycodes)) {
+            $allycodes = array($allycodes);
+        }
 
         foreach ($allycodes as $code) {
             if ($this->validateAllycode($code)) {
@@ -741,7 +775,7 @@ class ApiClientV3
         }
 
         sort($result);
-        array_unique($result );
+        array_unique($result);
         return $result;
     }
 
@@ -754,31 +788,32 @@ class ApiClientV3
      * @param null $payload
      * @return null
      */
-    public  function getPlayers($allycodes, $payload = null)
+    public function getPlayers($allycodes, $payload = null)
     {
         $players = null;
 
         $allycodes = $this->getAlycodes($allycodes);
 
-        if ( count($allycodes) > 0 ) {
+        if (count($allycodes) > 0) {
             $payload = $this->validatePayload($endpoint = 'player', $payload);
-            $players= $this->fetchPlayers($allycodes, $payload);
+            $players = $this->fetchPlayers($allycodes, $payload);
         }
 
         return $players;
     }
 
-    private function fetchPlayers($allycodes, $payload){
+    private function fetchPlayers($allycodes, $payload)
+    {
 
-        $data       = array();  // return data
+        $data = array();  // return data
 
         $fetch_list = array();  // fetched from api
         $cache_list = array();  // fetched from cache
 
-        foreach ( $allycodes as $code ) {
+        foreach ($allycodes as $code) {
 
             $player = $this->fetchCache($endpoint = 'player', $code, $payload);
-            if ( $player == null )  {
+            if ($player == null) {
                 // Cache - not found
                 array_push($fetch_list, $code);
             } else {
@@ -788,12 +823,12 @@ class ApiClientV3
             }
         }
 
-        $this->logger('DEBUG', sprintf('Fetch player: From Cache:' . json_encode($cache_list)));
-        $this->logger('DEBUG', sprintf('Fetch player: From API:' . json_encode($fetch_list)));
+        $this->logger('DEBUG', sprintf('[Fetch player]: From Cache:' . json_encode($cache_list)));
+        $this->logger('DEBUG', sprintf('[Fetch player]: From API:' . json_encode($fetch_list)));
 
         if (count($fetch_list) > 0) {
 
-            $q_payload = (object) $payload;
+            $q_payload = (object)$payload;
             $q_payload->allycodes = $fetch_list;
 
             // Send query
@@ -804,9 +839,6 @@ class ApiClientV3
 
             // Process Cache/Data
             foreach ($players as $player) {
-                if ($this->config['cache_enable']) {
-                    $this->storeCache($endpoint = 'player', $player->allyCode, $player, $payload);
-                }
                 array_push($data, $player);
             }
         }
@@ -814,37 +846,38 @@ class ApiClientV3
         return $data;
     }
 
-    public  function getPlayersUnits($allycodes, $payload = null)
+    public function getPlayersUnits($allycodes, $payload = null)
     {
         $players = null;
         $allycodes = $this->getAlycodes($allycodes);
 
-        if ( count($allycodes) > 0 ) {
+        if (count($allycodes) > 0) {
             $payload = $this->validatePayload($endpoint = 'units', $payload);
-            $players= $this->fetchPlayersUnits($allycodes, $payload);
+            $players = $this->fetchPlayersUnits($allycodes, $payload);
         }
 
         return $players;
     }
 
-    private function fetchPlayersUnits($allycodes, $payload){
+    private function fetchPlayersUnits($allycodes, $payload)
+    {
 
-        $data       = array();  // return data
+        $data = array();  // return data
         $fetch_list = array();  // fetched from api
         $cache_list = array();  // fetched from cache
 
-        foreach ( $allycodes as $code ) {
+        foreach ($allycodes as $code) {
 
             $player = $this->fetchCache($endpoint = 'units', $code, $payload);
-            if ( $player == null )  {
+            if ($player == null) {
                 // Cache - not found
                 array_push($fetch_list, $code);
             } else {
                 // Cache - ok
                 array_push($cache_list, $code);
 
-                foreach ( $player as $unit => $player_data ) {
-                    foreach ( $player_data as $pdata ) {
+                foreach ($player as $unit => $player_data) {
+                    foreach ($player_data as $pdata) {
                         if (!isset($data[$unit])) {
                             $data[$unit] = array();
                         }
@@ -854,8 +887,8 @@ class ApiClientV3
             }
         }
 
-        $this->logger('DEBUG', sprintf('Fetch player: From Cache:' . json_encode($cache_list)));
-        $this->logger('DEBUG', sprintf('Fetch player: From API:' . json_encode($fetch_list)));
+        $this->logger('DEBUG', sprintf('[fetchPlayersUnits]: From Cache:' . json_encode($cache_list)));
+        $this->logger('DEBUG', sprintf('[fetchPlayersUnits]: From API:' . json_encode($fetch_list)));
 
         if (count($fetch_list) > 0) {
             $q_payload = (object)$payload;
@@ -873,7 +906,9 @@ class ApiClientV3
 
             foreach ($units as $unit => $players) {
                 foreach ($players as $player) {
-                    if ( !isset($data[$unit]) ) { $data[$unit] = array(); }
+                    if (!isset($data[$unit])) {
+                        $data[$unit] = array();
+                    }
                     array_push($data[$unit], $player);
 
                     $store[$player->allyCode]->data[$unit] = array($player);
@@ -888,4 +923,127 @@ class ApiClientV3
 
         return $data;
     }
+
+    public function getGuilds($allycodes, $payload = null)
+    {
+        $guilds = null;
+        $allycodes = $this->getAlycodes($allycodes);
+
+        if (count($allycodes) > 0) {
+            $payload = $this->validatePayload($endpoint = 'guild', $payload);
+            $guilds = $this->fetchGuilds($allycodes, $payload);
+        }
+
+        return $guilds;
+    }
+
+    public function fetchGuilds($allycodes, $payload = null)
+    {
+
+        $data = array();  // return data
+        $fetch_list = array();  // fetched from api
+        $cache_list = array();  // fetched from cache
+
+        foreach ($allycodes as $code) {
+            $name = null;
+
+            // Temporary force cache
+            $fcache = $this->config['force_cache'];
+            $fapi = $this->config['force_api'];
+            $this->config['force_cache'] = true;
+            $this->config['force_api'] = false;
+
+            $player_payload = $this->validatePayload($endpoint = 'player', $payload);
+            $player = $this->fetchCache($endpoint = 'player', $code, $player_payload);
+
+            if ($player != null) {
+                $age = (isset($player->updated) ? time() - intval($player->updated / 1000) : self::DEFAULT_CONFIG['cache_expire_guild'] + 1);
+                if ( $age < self::DEFAULT_CONFIG['cache_expire_guild'] ) {
+                    if (isset($player->guildName) && strlen($player->guildName) > 0) {
+                        $name = md5($player->guildName);
+                    }
+                } else {
+                    $this->logger('DEBUG', sprintf('[FetchGuilds]: player/%s expired (%s > %s)', $code, $age, self::DEFAULT_CONFIG['cache_expire_guild']));
+                }
+            }
+            $this->config['force_cache'] = $fcache;
+            $this->config['force_api'] = $fapi;
+
+            if ($name != null) {
+                $guild = $this->fetchCache($endpoint = 'guild', $name, $payload );
+
+                if ($guild == null) {
+                    array_push($fetch_list, $code);
+                } else {
+                    array_push($cache_list, $code);
+                    $data[$name] = $guild;
+                }
+            } else {
+                array_push($fetch_list, $code);
+            }
+        }
+        // Return config data
+
+
+        $this->logger('DEBUG', sprintf('[FetchGuilds]: From Cache:' . json_encode($cache_list)));
+        $this->logger('DEBUG', sprintf('[FetchGuilds]: From API:' . json_encode($fetch_list)));
+
+        if (count($fetch_list) > 0) {
+            foreach ($fetch_list as $code) {
+                $q_payload = (object)$payload;
+                $q_payload->allycode = $code;
+
+                $guild = $this->fetchApi(self::API_URL_GUILD, $q_payload);
+                $data[$code] = $guild;
+
+                if ($guild != null ) {
+                    $name = md5($guild->name);
+                    if ($this->config['cache_enable']) {
+                        $this->storeCache($endpoint = 'guild', $name, $guild, $payload);
+
+                        if ( $payload['roster']== true ) {
+                            if ( $payload['units'] == true ) {
+                                // Save units
+                                $store = array();
+
+                                foreach ($guild->roster as $unit => $players) {
+                                    foreach ($players as $player) {
+                                        if (!isset($store[$player->allyCode])) {
+                                            $store[$player->allyCode] = (object)[];
+                                            $store[$player->allyCode]->data = array();
+                                        }
+
+                                        $store[$player->allyCode]->data[$unit] = array($player);
+                                        $store[$player->allyCode]->updated = $player->updated;
+                                    }
+                                }
+
+                                foreach ( $store as $player => $pdata ) {
+                                    $player_payload = $this->validatePayload($endpoint = 'units', $payload);
+
+                                    $this->logger('DEBUG', sprintf('[FetchGuilds]: Guild payload: %s', json_encode($payload)));
+                                    $this->logger('DEBUG', sprintf('[FetchGuilds]: Units payload: %s', json_encode($player_payload)));
+                                    exit;
+                                    $this->storeCache($endpoint = 'units', $player, $store[$player], $player_payload);
+                                }
+
+                            } else {
+                                // Save players
+                                foreach ( $guild->roster as $player ) {
+                                    $player_payload = $this->validatePayload($endpoint = 'player', $payload);
+                                    $this->storeCache($endpoint = 'player', $player->allyCode, $player, $player_payload);
+                                }
+                            }
+                        }
+                    }
+
+                    $data[$name] = $guild;
+                }
+            }
+        }
+
+        return $data;
+    }
+
+
 }
