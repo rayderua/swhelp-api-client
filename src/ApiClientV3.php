@@ -335,6 +335,7 @@ class ApiClientV3
 
         $result['language'] = $this->config['lang'];
 
+
         $result['enums'] = false;
         if ( isset($payload['enums']) && $payload['enums'] != false ) {
             $result['enums'] = true;
@@ -346,22 +347,23 @@ class ApiClientV3
         }
 
         if (in_array($endpoint,['guild','units'])) {
-            $result['mods'] = true;
-            if ( isset($payload['mods']) && $payload['mods'] == false ) {
-                $result['enums'] = false;
+            $result['mods'] = false;
+
+            if (isset($payload['mods']) && $payload['mods'] == true) {
+                $result['mods'] = true;
+            }
+        }
+
+        if ( $endpoint == 'guild') {
+            $result['roster'] = true;
+            $result['units'] = true;
+
+            if ( isset($payload['roster']) && $payload['roster'] == false ) {
+                $result['roster'] = false;
             }
 
-            if ( $endpoint == 'guild') {
-                $result['roster'] = true;
-                $result['units'] = true;
-
-                if ( isset($payload['roster']) && $payload['roster'] == false ) {
-                    $result['roster'] = false;
-                }
-
-                if ( isset($payload['units']) && $payload['units'] == false ) {
-                    $result['units'] = false;
-                }
+            if ( isset($payload['units']) && $payload['units'] == false ) {
+                $result['units'] = false;
             }
         }
 
@@ -431,8 +433,8 @@ class ApiClientV3
         $payload_project = $payload['project'];
         unset($payload['project']);
 
-        $this->logger('WARNING', sprintf("[FetchCache] FETCH: %s", json_encode($payload)));
-        $this->logger('WARNING', sprintf("[FetchCache] CACHE: %s", json_encode($cache_payload)));
+        $this->logger('DEBUG', sprintf("[FetchCache] FETCH: %s", json_encode($payload)));
+        $this->logger('DEBUG', sprintf("[FetchCache] CACHE: %s", json_encode($cache_payload)));
 
         if ( !$this->compareHashes($payload, $cache_payload) ) {
             $this->logger('WARNING', sprintf("[FetchCache] [%s/%s] Cache payload does not mutch", $endpoint, $name));
@@ -521,13 +523,19 @@ class ApiClientV3
 
         // Prepare store data
         $store = (object)[];
-        $store->data = $data;
         $store->project = $payload['project'];  unset($payload['project']);
         $store->payload = $payload;
+
+        if ($endpoint == 'units') {
+            $store->data = $data->data;
+        } else {
+            $store->data = $data;
+        }
 
         if (isset($data->updated)) {
             $store->updated = $data->updated;
         } else {
+            echo json_encode($data,JSON_PRETTY_PRINT); exit;
             $store->updated = time()*1000;
         }
 
@@ -627,17 +635,17 @@ class ApiClientV3
 
 
             if (!isset($json->expires_in)) {
-                $message = sprintf('Set token expires_in to default');
+                $message = sprintf('[Login] Set token expires_in to default');
                 $this->logger('CRITICAL', $message);
                 throw new Exception($message);
             }
 
             if (!isset($json->expires_at)) {
-                $this->logger('DEBUG', sprintf('Set token expires_at to default'));
+                $this->logger('DEBUG', sprintf('[Login] Set token expires_at to default'));
                 $json->expires_at = $stamp + $json->expires_in;
             }
 
-            $this->logger('INFO', sprintf('Auth - OK'));
+            $this->logger('INFO', sprintf('[Login] Auth - OK'));
             file_put_contents($this->api_credentials, json_encode($json));
             $this->login_check();
         }
@@ -713,6 +721,30 @@ class ApiClientV3
         return $data;
     }
 
+    private function validateAllycode($ally = null) {
+        if ( is_numeric($ally) && is_integer($ally) && ($ally/100000000) > 1 && ($ally/100000000) < 10) {
+            return intval($ally);
+        } else {
+            return false;
+        }
+    }
+
+    private function getAlycodes($allycodes = null ) {
+        $result = array();
+
+        if ( !is_array($allycodes) ) { $allycodes = array($allycodes); }
+
+        foreach ($allycodes as $code) {
+            if ($this->validateAllycode($code)) {
+                array_push($result, $code);
+            }
+        }
+
+        sort($result);
+        array_unique($result );
+        return $result;
+    }
+
     /*
      * Players
      */
@@ -722,34 +754,19 @@ class ApiClientV3
      * @param null $payload
      * @return null
      */
-    public  function getPlayer($allycodes, $payload = null)
+    public  function getPlayers($allycodes, $payload = null)
     {
         $players = null;
 
-        $allys = array();
+        $allycodes = $this->getAlycodes($allycodes);
 
-        if ( is_array($allycodes) ) {
-            foreach ($allycodes as $code) {
-                if ( is_numeric($code) && is_integer($code) ) {
-                    array_push($allys,$code);
-                }
-            }
-            // $allys = array_map('intval', $allycodes);
-        } else {
-            if (is_numeric($allycodes) && is_integer($allycodes) ) {
-                array_push($allys, intval($allycodes));
-            }
-        }
-
-        if ( count($allys) > 0 ) {
+        if ( count($allycodes) > 0 ) {
             $payload = $this->validatePayload($endpoint = 'player', $payload);
-
-            $players= $this->fetchPlayers($allys, $payload);
+            $players= $this->fetchPlayers($allycodes, $payload);
         }
 
         return $players;
     }
-
 
     private function fetchPlayers($allycodes, $payload){
 
@@ -791,6 +808,81 @@ class ApiClientV3
                     $this->storeCache($endpoint = 'player', $player->allyCode, $player, $payload);
                 }
                 array_push($data, $player);
+            }
+        }
+
+        return $data;
+    }
+
+    public  function getPlayersUnits($allycodes, $payload = null)
+    {
+        $players = null;
+        $allycodes = $this->getAlycodes($allycodes);
+
+        if ( count($allycodes) > 0 ) {
+            $payload = $this->validatePayload($endpoint = 'units', $payload);
+            $players= $this->fetchPlayersUnits($allycodes, $payload);
+        }
+
+        return $players;
+    }
+
+    private function fetchPlayersUnits($allycodes, $payload){
+
+        $data       = array();  // return data
+        $fetch_list = array();  // fetched from api
+        $cache_list = array();  // fetched from cache
+
+        foreach ( $allycodes as $code ) {
+
+            $player = $this->fetchCache($endpoint = 'units', $code, $payload);
+            if ( $player == null )  {
+                // Cache - not found
+                array_push($fetch_list, $code);
+            } else {
+                // Cache - ok
+                array_push($cache_list, $code);
+
+                foreach ( $player as $unit => $player_data ) {
+                    foreach ( $player_data as $pdata ) {
+                        if (!isset($data[$unit])) {
+                            $data[$unit] = array();
+                        }
+                        array_push($data[$unit], $pdata);
+                    }
+                }
+            }
+        }
+
+        $this->logger('DEBUG', sprintf('Fetch player: From Cache:' . json_encode($cache_list)));
+        $this->logger('DEBUG', sprintf('Fetch player: From API:' . json_encode($fetch_list)));
+
+        if (count($fetch_list) > 0) {
+            $q_payload = (object)$payload;
+            $q_payload->allycodes = $fetch_list;
+            $res = $this->fetchApi(self::API_URL_UNITS, $q_payload);
+
+            $units = $res;
+            $store = array();
+
+            $updated = null;
+            foreach ($fetch_list as $player) {
+                $store[$player] = (object)[];
+                $store[$player]->data = array();
+            }
+
+            foreach ($units as $unit => $players) {
+                foreach ($players as $player) {
+                    if ( !isset($data[$unit]) ) { $data[$unit] = array(); }
+                    array_push($data[$unit], $player);
+
+                    $store[$player->allyCode]->data[$unit] = array($player);
+                    $store[$player->allyCode]->updated = $player->updated;
+                }
+            }
+
+            foreach ($fetch_list as $player) {
+                $this->storeCache($endpoint = 'units', $player, $store[$player], $payload);
             }
         }
 
