@@ -11,7 +11,7 @@ use Monolog\Handler\StreamHandler;
 
 // use Swgoh\Fetch\Player;
 
-class ApiClientV3
+class ApiClient
 {
 
     /**
@@ -334,7 +334,6 @@ class ApiClientV3
         if ( $endpoint == 'units' ) {
             $result['mods'] = true;
             if (isset($payload['mods']) && $payload['mods'] == false) {
-                echo "UNITS MODS: false\n";
                 $result['mods'] = false;
             }
         }
@@ -355,7 +354,6 @@ class ApiClientV3
             }
 
             if (isset($payload['mods']) && $payload['mods'] == false) {
-                echo "GUILD MODS: false\n";
                 $result['mods'] = false;
             }
 
