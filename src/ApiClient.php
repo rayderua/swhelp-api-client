@@ -315,7 +315,6 @@ class ApiClient
         }
     }
 
-
     public  function validatePayload($endpoint, $payload)
     {
         $result = array();
@@ -994,7 +993,8 @@ class ApiClient
                     array_push($fetch_list, $code);
                 } else {
                     array_push($cache_list, $code);
-                    $data[$name] = $guild;
+                    array_push($data, $guild);
+                    // $data[$code] = $guild;
                 }
             } else {
                 array_push($fetch_list, $code);
@@ -1012,9 +1012,12 @@ class ApiClient
                 $q_payload->allycode = $code;
 
                 $guild = $this->fetchApi(self::API_URL_GUILD, $q_payload);
-                $data[$code] = $guild;
+
 
                 if ($guild != null ) {
+                    array_push($data, $guild);
+                    // $data[$code] = $guild;
+
                     $name = md5($guild->name);
                     if ($this->config['cache_enable']) {
                         $this->storeCache($endpoint = 'guild', $name, $guild, $payload);
@@ -1038,10 +1041,6 @@ class ApiClient
 
                                 foreach ( $store as $player => $pdata ) {
                                     $player_payload = $this->validatePayload($endpoint = 'units', $payload);
-
-                                    $this->logger('DEBUG', sprintf('[FetchGuilds]: Guild payload: %s', json_encode($payload)));
-                                    $this->logger('DEBUG', sprintf('[FetchGuilds]: Units payload: %s', json_encode($player_payload)));
-                                    exit;
                                     $this->storeCache($endpoint = 'units', $player, $store[$player], $player_payload);
                                 }
 
@@ -1054,8 +1053,6 @@ class ApiClient
                             }
                         }
                     }
-
-                    $data[$name] = $guild;
                 }
             }
         }

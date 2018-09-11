@@ -1,5 +1,5 @@
 # swgoh-api-client - API wrapper for api.swgoh.help
-PHP wrapper for swgoh.help API
+PHP wrapper for swgoh.help API (v3 Beta)
 
 ## Installation
 ```
@@ -10,110 +10,115 @@ PHP wrapper for swgoh.help API
 # composer require rayder/swhelp-api-client
 ```
 
-## Basic usage
+## Basic usage (example)
 
 ```php
 use Swgoh\ApiClient;
 
 $apiConfig = array(
-    'username'             => "API_USERNAME",
-    'password'             => "API_PASSWORD",
+    'username'             => "API_USERNAME",           // required
+    'password'             => "API_PASSWORD",           // required
+    'datadir'               => __DIR__.'/storage',      // recommends
+    'cache_enable'          => true,                    // recommends
+    'log_enable'            => true                     // recommends
+    'log_level'             => 'DEBUG',
+    'log_verbose'           => true,
+    'lang'                  => 'eng_en',
 );
+
 $api = new ApiClient($apiConfig);
 ```
 
 
-## Additioanal config parametrs
+## Additional config parametrs
 
 | name | default | description |
 |---|---|---|
-| datadir           | sys_tmp_dir/swgoh-api | The directory in which will be stored credential and cache data|
-| cache_enable      | False                 | Enable caching. All the data requested from the api will be stored in the local cache (required: datadir)|
-| cache_rm_expired  | False                 | Remove cache if expired
-| cache_player_time | 3600                  | Cache lifetime (in seconds) for swgoh/player data (cannot be less then default)|
-| cache_guild_time  | 3600*4                | Cache lifetime (in seconds) for swgoh/guild data (Cannot be less then default)|
-| cache_data_time   | 3600*24               | Cache lifetime (in seconds) for swgoh/guild data (Cannot be less then default)|
-| force_cache       | False                 | Get data only from cache (if cache_enable = true), |
-| force_api         | False                 | Get data only from API. (force_cache will be ignored)|
-| log_enable        | False                 | Enable logging (required: datadir or log_file) |
-| log_verbose       | False                 | Verbose log to stdout (default: false) |
-| log_level         | ERROR                 | Log level ('DEBUG','INFO','WARNING','ERROR','CRITICAL')  |
-| log_file          | swgoh-api-client.log  | Log file (required: log_enable)  |
-| lang              | eng_en                | Api query language (See apiv2.swgoh.help/swgoh)
-| project_api       | True                  | Send project to API. If disabled, an empty project will be sent to API |
+| datadir               | sys_tmp_dir/swgoh-api | The directory in which will be stored credential and cache data|
+| cache_enable          | False                 | Enable caching. All the data requested from the api will be stored in the local cache (required: datadir)|
+| cache_expire_remove   | False                 | Remove cache if expired
+| cache_expire_player   | 3600                  | Cache lifetime (in seconds) for swgoh/player data (cannot be less then default)|
+| cache_expire_guild    | 3600*4                | Cache lifetime (in seconds) for swgoh/guild data (Cannot be less then default)|
+| cache_expire_data     | 3600*24               | Cache lifetime (in seconds) for swgoh/guild data (Cannot be less then default)|
+| force_cache           | False                 | Get data only from cache (if cache_enable = true), |
+| force_api             | False                 | Get data only from API. (force_cache will be ignored)|
+| log_enable            | False                 | Enable logging (required: datadir or log_file) |
+| log_verbose           | False                 | Verbose log to stdout (default: false) |
+| log_level             | ERROR                 | Log level ('DEBUG','INFO','WARNING','ERROR','CRITICAL')  |
+| log_file              | swgoh-api-client.log  | Log file (required: log_enable)  |
+| lang                  | eng_en                | Api query language (See apiv2.swgoh.help/swgoh)
+
 
 
 ## Get player data (swgoh/player)
 
 ```php
-$allyCodes = array(123456789,987654321);
+    $payload = null;
+    $collections = array(
+        'abilityList', 'battleEnvironmentsList', 'battleTargetingRuleList', 'categoryList',
+        'challengeList', 'challengeStyleList', 'effectList', 'environmentCollectionList',
+        'equipmentList', 'eventSamplingList', 'guildExchangeItemList', 'guildRaidList',
+        'helpEntryList', 'materialList', 'playerTitleList', 'powerUpBundleList',
+        'raidConfigList', 'recipeList', 'requirementList', 'skillList',
+        'starterGuildList', 'statModList', 'statModSetList', 'statProgressionList',
+        'tableList', 'targetingSetList', 'territoryBattleDefinitionList', 'territoryWarDefinitionList',
+        'unitsList', 'unlockAnnouncementDefinitionList', 'warDefinitionList', 'xpTableList'
+    );
 
-$project['name'] = 1;
-$project['allyCode'] = 1;
-$project['roster'] = array('defId'=> 1, 'level' => 1, 'gp' => 1, 'gear' => 1, 'rarity' => 1, 'mods' => ["id"=> 1, "slot"=> 1, "setId"=> 1, "set"=> 1, "level"=> 1, "pips"=> 1]);
-
-$accounts = $api->getPlayer(
-    $allyCodes,     // players
-    $project        // default = null
-);
+    $payload = null;
+    foreach ($collections as $collection) {
+        $data[$collection] = $client->getData($collection, $payload);
+    }
 ```
 
-## Get player units (swgoh/units)
+## Battles
 ```php
-$allyCodes = array(123456789,987654321);
-$accounts = $api->getPlayerUnits(
-    $allyCodes,     // players
-    $mods = false   // default true
-);
+    $data = $client->getBattles();
+    file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
+```
+## Events
+```php
+    $data = $client->getEvents();
+    file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
 
-## Get guild data (swgoh/guild)
+## Squads
 ```php
-$allyCodes = array(
-    /* allycode => GuildName */
-    123456789 => 'GuildName',   // Try to find guild in cache by GuildName
-    123456789 => null,          
-    123456789,
-    '123456789'
-);
-
-$project = array(;
-    'name'      => 1,
-    'members'   => 1,
-    'gp'        => 1,
-    'roster'    => array(
-        'name' => 1, 
-        'allyCode' => 1
-    )
-);
-
-$guilds = $api->getGuild(
-    $guild_allys,           // players
-    $project,               // default = null
-    $fetchPlayers = true    // also fetch players (if cache enabled)/ Default false
-);
+    $data = $client->getSquads();
+    file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
 
-## Get guild data (swgoh/guild)
+## Zetas
 ```php
-$endpoints = array(
-    'abilityList', 'battleEnvironmentsList', 'battleTargetingRuleList', 'categoryList',
-    'challengeList', 'challengeStyleList', 'effectList', 'environmentCollectionList',
-    'equipmentList', 'eventSamplingList', 'guildExchangeItemList', 'guildRaidList',
-    'helpEntryList', 'materialList', 'playerTitleList', 'powerUpBundleList',
-    'raidConfigList', 'recipeList', 'requirementList', 'skillList',
-    'starterGuildList', 'statModList', 'statModSetList', 'statProgressionList',
-    'tableList', 'targetingSetList', 'territoryBattleDefinitionList', 'territoryWarDefinitionList',
-    'unitsList', 'unlockAnnouncementDefinitionList', 'warDefinitionList', 'xpTableList'
-);
+    $data = $client->getZetas();
+    file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
+```
 
-$projects = array();
+## Players
+```php
+    $players = [199538349];
+    $payload = null;
+    $data = $client->getPlayers($players, $payload);
+    file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
+```
 
-$projects['warDefinitionList']['id'] = 1;
-$projects['warDefinitionList']['nodeList'] = array('id' => 1, 'type' => 1);
-$projects['unitsList']['id'] = 1;
-$projects['unitsList']['baseId'] = 1;
-$projects['unitsList']['name'] = 1;
+## Units
+```php
+    $players = [199538349];
+    $payload = null;
+    $data = $client->getPlayersUnits($players, $payload);
+    file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
+```
 
-$data = $api->getData($endpoints, $projects);
+## Guilds
+```php
+    $payload = array(
+        'roster' => true,
+        'units' => false,
+        'mods' => false,
+    );
+    
+    $players = [475516157];
+    $data = $client->getGuilds($players, $payload);
+    file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
