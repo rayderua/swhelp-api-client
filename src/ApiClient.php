@@ -235,7 +235,7 @@ class ApiClient
             if (isset($config['cache_expire_remove']) && $config['cache_expire_remove'] != false) {
                 $this->config['cache_expire_remove'] = true;
             } else {
-                $this->config['cache_enable'] = self::DEFAULT_CONFIG['cache_expire_remove'];
+                $this->config['cache_expire_remove'] = self::DEFAULT_CONFIG['cache_expire_remove'];
             }
 
             $this->config['cache_expire_player'] = self::DEFAULT_CONFIG['cache_expire_player'];
@@ -420,7 +420,6 @@ class ApiClient
                 }
             } else {
                 if (!is_array($exists_project)) {
-                    var_dump($exists_project);
                     // $this->logger('DEBUG', sprintf("[compareHashes] Array(%s) vs Var(%s)", json_encode($need_project),json_encode($exists_project)));
                     return false;
                 } else {
