@@ -150,8 +150,8 @@ class ApiClient
             throw new Exception('[SetConfig] Password required');
         }
 
-        $this->config['api_username'] = $config['username'];
-        $this->config['api_password'] = $config['password'];
+        $this->config['username'] = $config['username'];
+        $this->config['password'] = $config['password'];
 
 
         // preSetup: Cache
@@ -297,7 +297,7 @@ class ApiClient
     public function getConfig()
     {
         $config = $this->config;
-        $config['username'] = '********';
+        $config['password'] = '********';
         return $config;
     }
 
@@ -598,15 +598,15 @@ class ApiClient
             throw new Exception($message);
         }
 
-        if (!isset($this->config['api_username']) || !isset($this->config['api_password'])) {
+        if (!isset($this->config['username']) || !isset($this->config['password'])) {
             $message = sprintf('[Login] Username/Password required');
             $this->logger('CRITICAL', $message);
             throw new Exception($message);
         }
 
         $form = array(
-            'username' => $this->config['api_username'],
-            'password' => $this->config['api_password'],
+            'username' => $this->config['username'],
+            'password' => $this->config['password'],
             'grant_type' => 'password',
             'client_id' => 'abc',
             'client_secret' => '123',
