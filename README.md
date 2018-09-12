@@ -1,7 +1,7 @@
 # swgoh-api-client - API wrapper for api.swgoh.help
 PHP wrapper for swgoh.help API (v3 Beta)
 
-## Installation
+### Installation
 ```
 // add repository
 # composer config repositories.swhelp-api vcs https://github.com/rayderua/swhelp-api-client.git
@@ -10,7 +10,7 @@ PHP wrapper for swgoh.help API (v3 Beta)
 # composer require rayder/swhelp-api-client
 ```
 
-## Basic usage (example)
+### Basic usage (example)
 
 ```php
 use Swgoh\ApiClient;
@@ -30,7 +30,7 @@ $api = new ApiClient($apiConfig);
 ```
 
 
-## Additional config parametrs
+### Additional config parametrs
 
 | name | default | description |
 |---|---|---|
@@ -47,10 +47,11 @@ $api = new ApiClient($apiConfig);
 | log_level             | ERROR                 | Log level ('DEBUG','INFO','WARNING','ERROR','CRITICAL')  |
 | log_file              | swgoh-api-client.log  | Log file (required: log_enable)  |
 | lang                  | eng_en                | Api query language (See apiv2.swgoh.help/swgoh)
+| query_timeout         | 600                   | API Query timeout in seconds |
 
 
 
-## Get player data (swgoh/player)
+### Get player data (swgoh/player)
 
 ```php
     $payload = null;
@@ -71,30 +72,30 @@ $api = new ApiClient($apiConfig);
     }
 ```
 
-## Battles
+### Battles
 ```php
     $data = $client->getBattles();
     file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
-## Events
+### Events
 ```php
     $data = $client->getEvents();
     file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
 
-## Squads
+### Squads
 ```php
     $data = $client->getSquads();
     file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
 
-## Zetas
+### Zetas
 ```php
     $data = $client->getZetas();
     file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
 
-## Players
+### Players
 ```php
     $players = [199538349];
     $payload = null;
@@ -102,7 +103,7 @@ $api = new ApiClient($apiConfig);
     file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
 
-## Units
+### Units
 ```php
     $players = [199538349];
     $payload = null;
@@ -110,7 +111,7 @@ $api = new ApiClient($apiConfig);
     file_put_contents('dev.json', json_encode($data, JSON_PRETTY_PRINT));
 ```
 
-## Guilds
+### Guilds
 ```php
     $payload = array(
         'roster' => true,

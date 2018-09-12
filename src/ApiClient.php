@@ -3,6 +3,7 @@
 namespace Swgoh;
 use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\RotatingFileHandler;
@@ -110,6 +111,7 @@ class ApiClient
         'force_api'                 => false,           // Fetch: Force from API
         'force_cache'               => false,           // Fetch: Force from Cache
         'disable_projects'          => false,           // Fetch: Do not send project to API
+        'query_timeout'             => 600,             // Query timeout
     );
 
     private $config;
@@ -130,7 +132,6 @@ class ApiClient
 
             $this->api_client = new Client([
                 'base_uri' => self::API_URL_BASE,
-                'timeout' => 600,
                 'http_errors' => false,
                 'debug' => false,
             ]);
@@ -150,8 +151,8 @@ class ApiClient
             throw new Exception('[SetConfig] Password required');
         }
 
-        $this->config['api_username'] = $config['username'];
-        $this->config['api_password'] = $config['password'];
+        $this->config['username'] = $config['username'];
+        $this->config['password'] = $config['password'];
 
 
         // preSetup: Cache
@@ -235,7 +236,7 @@ class ApiClient
             if (isset($config['cache_expire_remove']) && $config['cache_expire_remove'] != false) {
                 $this->config['cache_expire_remove'] = true;
             } else {
-                $this->config['cache_enable'] = self::DEFAULT_CONFIG['cache_expire_remove'];
+                $this->config['cache_expire_remove'] = self::DEFAULT_CONFIG['cache_expire_remove'];
             }
 
             $this->config['cache_expire_player'] = self::DEFAULT_CONFIG['cache_expire_player'];
@@ -292,12 +293,17 @@ class ApiClient
             $this->config['disable_projects'] = $config['disable_projects'];
         }
 
+        if (isset($config['query_timeout']) && is_int($config['query_timeout'])) {
+            $this->config['query_timeout'] = $config['query_timeout'];
+        }
+
+
     }
 
     public function getConfig()
     {
         $config = $this->config;
-        $config['username'] = '********';
+        $config['password'] = '********';
         return $config;
     }
 
@@ -420,7 +426,6 @@ class ApiClient
                 }
             } else {
                 if (!is_array($exists_project)) {
-                    var_dump($exists_project);
                     // $this->logger('DEBUG', sprintf("[compareHashes] Array(%s) vs Var(%s)", json_encode($need_project),json_encode($exists_project)));
                     return false;
                 } else {
@@ -598,15 +603,15 @@ class ApiClient
             throw new Exception($message);
         }
 
-        if (!isset($this->config['api_username']) || !isset($this->config['api_password'])) {
+        if (!isset($this->config['username']) || !isset($this->config['password'])) {
             $message = sprintf('[Login] Username/Password required');
             $this->logger('CRITICAL', $message);
             throw new Exception($message);
         }
 
         $form = array(
-            'username' => $this->config['api_username'],
-            'password' => $this->config['api_password'],
+            'username' => $this->config['username'],
+            'password' => $this->config['password'],
             'grant_type' => 'password',
             'client_id' => 'abc',
             'client_secret' => '123',
@@ -617,9 +622,18 @@ class ApiClient
         $this->logger('DEBUG', sprintf("[Login] Send request to %s, form: %s\n", self::API_URL_AUTH, json_encode($v_form)));
 
         $stamp = time();
-        $res = $this->api_client->request('POST', self::API_URL_AUTH, [
-            'form_params' => $form,
-        ]);
+        try {
+            $res = $this->api_client->request('POST', self::API_URL_AUTH, [
+                'timeout' => $this->config['query_timeout'],
+                'http_errors' => false,
+                'form_params' => $form,
+            ]);
+        } catch (GuzzleException $e) {
+            $message = sprintf("[Login] Request failed: %s", $e->getMessage());
+            $this->logger('CRITICAL', $message);
+            throw new Exception($message);
+        }
+
 
         $code = $res->getStatusCode();
         $body = $res->getBody();
@@ -741,28 +755,40 @@ class ApiClient
         $data = null;
         $this->logger('DEBUG', sprintf("[FetchApi] Send request: %s. payload: %s", $url, json_encode($payload)));
 
-        $res = $this->api_client->request('POST', $url, [
-            'headers' => [
-                'Content-type' => 'application/json',
-                'Accept' => 'application/json',
-                'Authorization' => 'Bearer ' . $this->api_token,
-            ],
-            'body' => json_encode($payload)
-        ]);
+        try {
+            $res = $this->api_client->request('POST', $url, [
+                'timeout' => $this->config['query_timeout'],
+                'headers' => [
+                    'Content-type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $this->api_token,
+                ],
+                'body' => json_encode($payload)
+            ]);
+        }
 
-        $code = $res->getStatusCode();
-        $body = $res->getBody();
+        catch (GuzzleException $e) {
+            $res = null;
+            $this->logger('CRITICAL', sprintf("[FetchApi] Request failed: %s",$e->getMessage()));
+        }
 
-        if ($code == 200) {
-            $json = json_decode($body);
-            if ($json == null) {
-                $this->logger('ERROR', sprintf('[FetchApi] Could not parse response body'));
+        if ( $res != null ) {
+            $code = $res->getStatusCode();
+            $body = $res->getBody();
+            $headers = $res->getHeaders();
+
+            if ($code == 200) {
+                $json = json_decode($body);
+                if ($json == null) {
+                    $this->logger('ERROR', sprintf('[FetchApi] Could not parse response body'));
+                } else {
+                    $this->logger('DEBUG', sprintf('[FetchApi] Response - OK'));
+                    $data = $json;
+                }
             } else {
-                $this->logger('DEBUG', sprintf('[FetchApi] Response - OK'));
-                $data = $json;
+                // TODO: check the error, and do a re-query if necessary
+                $this->logger('CRITICAL', sprintf('[FetchApi] Could not fetch from API. code = %s, answer = %s', $code, $body));
             }
-        } else {
-            $this->logger('CRITICAL', sprintf('[FetchApi] Could not fetch from API. code = %s, answer = %s', $code, $body));
         }
 
         return $data;
