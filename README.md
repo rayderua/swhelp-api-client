@@ -47,6 +47,7 @@ $api = new ApiClient($apiConfig);
 | log_level             | ERROR                 | Log level ('DEBUG','INFO','WARNING','ERROR','CRITICAL')  |
 | log_file              | swgoh-api-client.log  | Log file (required: log_enable)  |
 | lang                  | eng_en                | Api query language (See apiv2.swgoh.help/swgoh)
+| query_timeout         | 600                   | API Query timeout in seconds |
 
 
 
