@@ -865,8 +865,8 @@ class ApiClient
             }
         }
 
-        $this->logger('DEBUG', sprintf('[Fetch player]: From Cache:' . json_encode($cache_list)));
-        $this->logger('DEBUG', sprintf('[Fetch player]: From API:' . json_encode($fetch_list)));
+        $this->logger('DEBUG', sprintf('[fetchPlayers]: From Cache:' . json_encode($cache_list)));
+        $this->logger('DEBUG', sprintf('[fetchPlayers]: From API:' . json_encode($fetch_list)));
 
         if (count($fetch_list) > 0) {
 
@@ -876,14 +876,26 @@ class ApiClient
             // Send query
             $res = $this->fetchApi(self::API_URL_PLAYER, $q_payload);
 
-            // Convert single to array
-            $players = (is_array($res) ? $res : array($res));
+            if ($res == null) {
+                $this->logger('ERROR', sprintf("[fetchPlayers] API resonse is null"));
+            } else {
 
-            // Process Cache/Data
-            foreach ($players as $player) {
-                array_push($data, $player);
-                if ( $this->config['cache_enable'] ) {
-                    $this->storeCache($endpoint = 'player', $player->allyCode, $player, $payload);
+                // Convert single to array
+                $players = (is_array($res) ? $res : array($res));
+
+                // Process Cache/Data
+                foreach ($players as $player) {
+                    if (isset($player->allyCode)) {
+                        array_push($data, $player);
+                        if ($this->config['cache_enable']) {
+                            $this->storeCache($endpoint = 'player', $player->allyCode, $player, $payload);
+                        }
+                    } else {
+                        $this->logger('ERROR', sprintf("[fetchPlayers] Invalid player data"));
+                        $this->logger('ERROR', sprintf("[fetchPlayers] -------------------"));
+                        $this->logger('ERROR', sprintf("[fetchPlayers] %s".json_encode($player)));
+                        $this->logger('ERROR', sprintf("[fetchPlayers] -------------------"));
+                    }
                 }
             }
         }
