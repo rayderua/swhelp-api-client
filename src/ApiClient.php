@@ -796,7 +796,7 @@ class ApiClient
 
     private function validateAllycode($ally = null)
     {
-        if (is_numeric($ally) && is_integer($ally) && ($ally / 100000000) > 1 && ($ally / 100000000) < 10) {
+        if (ctype_digit($ally) && ($ally/100000000) >= 1 && ($ally/100000000) < 10) {
             return intval($ally);
         } else {
             return false;
