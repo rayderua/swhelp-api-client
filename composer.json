@@ -1,7 +1,7 @@
 {
   "name": "rayder/swhelp-api-client",
   "description": "Php API wrapper for api.swgih.help",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "require": {
     "php": ">=5.6.0",
     "ext-json": "*",
