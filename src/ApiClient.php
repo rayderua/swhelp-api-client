@@ -732,14 +732,14 @@ class ApiClient
         if (!isset($data->access_token)) {
             $this->logger('WARNING', sprintf('[LoginCheck] No access_token in credentials'));
             $this->login();
-            $isok = true;
+            $isok = false;
         }
 
         $stamp = time();
         if ($stamp >= $data->expires_at || $data->expires_at - $stamp <= 60) {
             $this->logger('WARNING', sprintf('[LoginCheck] Credentials expired at [%s]', date("Y-m-d H:i:s", $data->expires_at)));
             $this->login();
-            $isok = true;
+            $isok = false;
         }
 
         if ( $isok == true ) {
