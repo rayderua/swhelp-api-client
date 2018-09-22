@@ -1000,7 +1000,7 @@ class ApiClient
         $cache_list = array();  // fetched from cache
 
         foreach ($allycodes as $code) {
-            $name = null;
+            $guild_id = null;
 
             // Temporary force cache
             $fcache = $this->config['force_cache'];
@@ -1012,10 +1012,15 @@ class ApiClient
             $player = $this->fetchCache($endpoint = 'player', $code, $player_payload);
 
             if ($player != null) {
-                $age = (isset($player->updated) ? time() - intval($player->updated / 1000) : self::DEFAULT_CONFIG['cache_expire_guild'] + 1);
+                if (isset($player->updated)) {
+                    $age = (time() - intval($player->updated / 1000));
+                } else {
+                    $age = (self::DEFAULT_CONFIG['cache_expire_guild'] + 1);
+                }
+
                 if ( $age < self::DEFAULT_CONFIG['cache_expire_guild'] ) {
-                    if (isset($player->guildName) && strlen($player->guildName) > 0) {
-                        $name = md5($player->guildName);
+                    if ( strlen($player->guildRefId) > 0) {
+                        $guild_id = $player->guildRefId;
                     }
                 } else {
                     $this->logger('DEBUG', sprintf('[FetchGuilds]: player/%s expired (%s > %s)', $code, $age, self::DEFAULT_CONFIG['cache_expire_guild']));
@@ -1024,8 +1029,8 @@ class ApiClient
             $this->config['force_cache'] = $fcache;
             $this->config['force_api'] = $fapi;
 
-            if ($name != null) {
-                $guild = $this->fetchCache($endpoint = 'guild', $name, $payload );
+            if ( NULL != $guild_id ) {
+                $guild = $this->fetchCache($endpoint = 'guild', $guild_id, $payload );
 
                 if ($guild == null) {
                     array_push($fetch_list, $code);
@@ -1051,14 +1056,11 @@ class ApiClient
 
                 $guild = $this->fetchApi(self::API_URL_GUILD, $q_payload);
 
-
                 if ($guild != null ) {
                     array_push($data, $guild);
-                    // $data[$code] = $guild;
 
-                    $name = md5($guild->name);
                     if ($this->config['cache_enable']) {
-                        $this->storeCache($endpoint = 'guild', $name, $guild, $payload);
+                        $this->storeCache($endpoint = 'guild', $guild->id, $guild, $payload);
 
                         if ( $payload['roster']== true ) {
                             if ( $payload['units'] == true ) {
