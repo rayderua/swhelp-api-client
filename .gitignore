@@ -1,7 +1,7 @@
 /storage
 /vendor
 /tmp
-/check.php
+/config.json
 /.idea
 /.vscode
 /.vagrant
