@@ -46,6 +46,7 @@ class ApiClient
         'tur_tr',
     );
 
+
     const API_ALLOWED_DATA_COLLECTIONS = array(
         'abilityList',
         'battleEnvironmentsList',
@@ -772,12 +773,15 @@ class ApiClient
             $this->logger('CRITICAL', sprintf("[FetchApi] Request failed: %s",$e->getMessage()));
         }
 
-        if ( $res != null ) {
+
+        if ( NULL != $res ) {
             $code = $res->getStatusCode();
             $body = $res->getBody();
             $headers = $res->getHeaders();
 
-            if ($code == 200) {
+
+            if (intval($code/100) == 2) {
+                // 2xx - OK
                 $json = json_decode($body);
                 if ($json == null) {
                     $this->logger('ERROR', sprintf('[FetchApi] Could not parse response body'));
@@ -785,12 +789,15 @@ class ApiClient
                     $this->logger('DEBUG', sprintf('[FetchApi] Response - OK'));
                     $data = $json;
                 }
+            } elseif (intval($code/100) == 4) {
+                if ( 404 == $code ) {
+                    // Return empty on 404
+                }
+                $this->logger('CRITICAL', sprintf('[FetchApi] Could not fetch from API. code = %s, answer = %s', $code, $body));
             } else {
-                // TODO: check the error, and do a re-query if necessary
                 $this->logger('CRITICAL', sprintf('[FetchApi] Could not fetch from API. code = %s, answer = %s', $code, $body));
             }
         }
-
         return $data;
     }
 
@@ -842,7 +849,17 @@ class ApiClient
             $players = $this->fetchPlayers($allycodes, $payload);
         }
 
-        return $players;
+        if ( $players )
+        $result = array();
+        foreach ($allycodes as $allycode ) {
+            $result[$allycode] = null;
+        }
+
+        foreach ($players as $player) {
+            $result[$player->allyCode] = $player;
+        }
+
+        return $result;
     }
 
     private function fetchPlayers($allycodes, $payload)
@@ -877,7 +894,7 @@ class ApiClient
             $res = $this->fetchApi(self::API_URL_PLAYER, $q_payload);
 
             if ($res == null) {
-                $this->logger('ERROR', sprintf("[fetchPlayers] API resonse is null"));
+                $this->logger('ERROR', sprintf("[fetchPlayers] API response is null"));
             } else {
 
                 // Convert single to array
@@ -913,7 +930,16 @@ class ApiClient
             $players = $this->fetchPlayersUnits($allycodes, $payload);
         }
 
-        return $players;
+        $result = array();
+        foreach ($allycodes as $allycode ) {
+            $result[$allycode] = false;
+        }
+
+        foreach ($players as $player) {
+            $result[$player->allyCode] = $player;
+        }
+
+        return $result;
     }
 
     private function fetchPlayersUnits($allycodes, $payload)
@@ -990,7 +1016,23 @@ class ApiClient
             $guilds = $this->fetchGuilds($allycodes, $payload);
         }
 
-        return $guilds;
+        $result = array();
+        $roster = array();
+
+        foreach ($guilds as $guild) {
+            foreach ($guild->roster as $player) {
+                array_push($roster, $player->allyCode);
+            }
+            $result[$guild->id] = $guild;
+        }
+
+        foreach ($allycodes as $allycode) {
+            if ( FALSE == in_array($allycode, $roster)) {
+                $result[$allycode] = false;
+            }
+        }
+
+        return $result;
     }
 
     private function fetchGuilds($allycodes, $payload = null)
